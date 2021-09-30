@@ -24,7 +24,6 @@ func qInit(n *node) queue {
 }
 
 func (q *queue) add(n *node) {
-	//q.show()
 	temp := q.firstNode
 	for {
 		if temp.next == nil || temp.next == temp {
@@ -40,10 +39,10 @@ func (q *queue) add(n *node) {
 	}
 }
 
-func (q *queue) show() {
+func (q *queue) show(n int) {
 	t := q.firstNode
 	fmt.Println("start queue")
-	for i := 0; t.next != nil; i++ {
+	for i := 0; t.next != nil && (i < n || n == -1); i++ {
 		fmt.Println(i, ":", t.tableInfo.value)
 		if t.next != nil {
 			t = t.next
@@ -170,6 +169,7 @@ func sort(head table) {
 			fmt.Printf("#%7d\n", i)
 			fmt.Printf("vals: %d\n", q.count())
 			fmt.Printf("minval: %d\n", q.firstNode.tableInfo.value)
+			q.show(10)
 			fmt.Println("-----------------")
 		}
 		if q.firstNode.tableInfo.value == 0 {
@@ -218,6 +218,8 @@ func main() {
 	t.generateTable()
 	t.randomizeTable()
 	t.showTable()
+
 	fmt.Println(t.getValue())
+
 	sort(t)
 }
