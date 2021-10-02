@@ -12,7 +12,10 @@ type table struct {
 	value  int
 	emptyI int
 	emptyJ int
+	way    [][3][3]int
 }
+
+const divider = 10
 
 type queue struct {
 	firstNode *node
@@ -23,7 +26,15 @@ func qInit(n *node) queue {
 	return q
 }
 
-func (q *queue) add(n *node) {
+func (q *queue) addInEnd(n *node) {
+	temp := q.firstNode
+	for temp.next != nil && temp != temp.next {
+		temp = temp.next
+	}
+	temp.next = n
+}
+
+func (q *queue) addByValue(n *node) {
 	temp := q.firstNode
 	for {
 		if temp.next == nil || temp.next == temp {
@@ -84,6 +95,8 @@ func (t *table) getValue() int {
 			}
 		}
 	}
+	t.value += len(t.way) / divider
+
 	return t.value
 }
 
@@ -94,6 +107,18 @@ func (t *table) getValue() int {
 	return n
 }
 */
+
+func (t *table) generateTable() {
+	t.grid = [3][3]int{}
+	for i := 0; i < 3; i++ {
+		for j := 0; j < 3; j++ {
+			t.grid[i][j] = i*3 + j + 1
+		}
+	}
+	t.grid[2][2] = -1
+	t.emptyI = 2
+	t.emptyJ = 2
+}
 
 func (t *table) getMovable() [][2]int {
 	result := make([][2]int, 0)
@@ -114,22 +139,11 @@ func (t *table) getMovable() [][2]int {
 }
 
 func (t table) move(i, j int) table {
+	t.way = append(t.way, t.grid)
 	t.grid[t.emptyI][t.emptyJ], t.grid[i][j] = t.grid[i][j], t.grid[t.emptyI][t.emptyJ]
 	t.emptyI = i
 	t.emptyJ = j
 	return t
-}
-
-func (t *table) generateTable() {
-	t.grid = [3][3]int{}
-	for i := 0; i < 3; i++ {
-		for j := 0; j < 3; j++ {
-			t.grid[i][j] = i*3 + j + 1
-		}
-	}
-	t.grid[2][2] = -1
-	t.emptyI = 2
-	t.emptyJ = 2
 }
 
 func (t *table) randomizeTable() {
@@ -160,44 +174,76 @@ func (t *table) showTable() {
 	}
 }
 
-func sort(head table) {
-	q := qInit(&node{head, nil})
-	closedList := make([][3][3]int, 0)
+func BFSSort(head table) table {
+	q := qInit(&node{
+		tableInfo: head,
+	})
+
 	for i := 0; q.firstNode != nil; i++ {
 		if i%1000 == 0 {
-			PrintMemUsage()
-			fmt.Printf("#%7d\n", i)
-			fmt.Printf("vals: %d\n", q.count())
-			fmt.Printf("minval: %d\n", q.firstNode.tableInfo.value)
-			q.show(10)
-			fmt.Println("-----------------")
+			printStatus(i, q)
+		}
+		q.firstNode.tableInfo.getValue()
+		if q.firstNode.tableInfo.value == 0 {
+			q.firstNode.tableInfo.showTable()
+			fmt.Println(">>> Ready!")
+			return q.firstNode.tableInfo
+		}
+		movable := q.firstNode.tableInfo.getMovable()
+		for _, v := range movable {
+			newTable := q.firstNode.tableInfo.move(v[0], v[1])
+			q.addInEnd(&node{
+				tableInfo: newTable,
+			})
+		}
+		q.firstNode = q.firstNode.next
+	}
+	return table{}
+}
+
+func printStatus(i int, q queue) {
+	PrintMemUsage()
+	fmt.Printf("#%7d\n", i)
+	fmt.Printf("vals: %d\n", q.count())
+	fmt.Printf("minval: %d\n", q.firstNode.tableInfo.value)
+	q.show(10)
+	fmt.Println("-----------------")
+}
+
+func aStarSort(head table) table {
+	q := qInit(&node{head, nil})
+	closedList := make(map[int][][3][3]int, 0)
+	for i := 0; q.firstNode != nil; i++ {
+		if i%1000 == 0 {
+			printStatus(i, q)
 		}
 		if q.firstNode.tableInfo.value == 0 {
 			q.firstNode.tableInfo.showTable()
 			fmt.Println(">>> Ready!")
-			return
+			return q.firstNode.tableInfo
 		}
 		movable := q.firstNode.tableInfo.getMovable()
 		for _, v := range movable {
 			newTable := q.firstNode.tableInfo.move(v[0], v[1])
 			newTable.getValue()
 			b := true
-			for _, v1 := range closedList {
+			for _, v1 := range closedList[newTable.value] {
 				if v1 == newTable.grid {
 					b = false
 					break
 				}
 			}
 			if b {
-				q.add(&node{
+				q.addByValue(&node{
 					tableInfo: newTable,
 				})
-				closedList = append(closedList, newTable.grid)
+				closedList[newTable.value] = append(closedList[newTable.value], newTable.grid)
 			}
 		}
 		q.firstNode = q.firstNode.next
 		///time.Sleep(time.Second*3)
 	}
+	return table{}
 }
 func PrintMemUsage() {
 	var m runtime.MemStats
@@ -217,9 +263,26 @@ func main() {
 
 	t.generateTable()
 	t.randomizeTable()
+	/*t = t.move(2, 1)
+	t = t.move(1, 1)
+	t = t.move(1, 0)
+	t = t.move(0, 0)*/
+	t.way = [][3][3]int{}
+
 	t.showTable()
 
 	fmt.Println(t.getValue())
 
-	sort(t)
+	//ready := aStarSort(t)
+	ready := BFSSort(t)
+	for _, v := range ready.way {
+		for i := 0; i < 3; i++ {
+			for j := 0; j < 2; j++ {
+				fmt.Print(v[i][j], " | ")
+			}
+			fmt.Println(v[i][2])
+		}
+		fmt.Println("><")
+	}
+	ready.showTable()
 }
